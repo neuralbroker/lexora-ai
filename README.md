@@ -1359,7 +1359,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Support
 
-- 📧 Email: sajad@lexora.ai
 - 🐛 Issues: [github.com/sajadkoder/lexora-ai/issues](https://github.com/sajadkoder/lexora-ai/issues)
 - 💻 GitHub: [github.com/sajadkoder](https://github.com/sajadkoder)
 
