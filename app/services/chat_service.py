@@ -82,6 +82,9 @@ class ChatService:
         if not conversation.title:
             conversation.title = content[:50] + "..." if len(content) > 50 else content
 
+        await self.db.commit()
+        await self.db.refresh(conversation)
+
         context, sources = await self._retrieve_context(
             content,
             document_ids,
@@ -198,9 +201,12 @@ class ChatService:
         document_ids: Optional[list[str]] = None,
     ) -> tuple[str, list[dict]]:
         """Retrieve context from documents."""
-        cache_service = get_cache_service()
+        import hashlib
         
-        cache_key = f"retrieval:{self.user.id}:{hash(query)}"
+        cache_service = await get_cache_service()
+        
+        doc_filter = "_".join(sorted(document_ids)) if document_ids else "all"
+        cache_key = f"retrieval:{self.user.id}:{hashlib.sha256(query.encode()).hexdigest()[:16]}:{doc_filter}"
         cached = await cache_service.get(cache_key)
         
         if cached:
@@ -211,10 +217,6 @@ class ChatService:
         context, sources = retrieval_service.get_context(query, k=4)
 
         if document_ids:
-            context, sources = retrieval_service.get_context(
-                query,
-                k=4,
-            )
             context, sources = self._filter_by_documents(context, sources, document_ids)
 
         await cache_service.set(

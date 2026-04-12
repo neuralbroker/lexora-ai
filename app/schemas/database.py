@@ -12,7 +12,6 @@ from sqlalchemy import (
     String,
     Text,
     BigInteger,
-    ARRAY,
     JSON,
 )
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -67,8 +66,8 @@ class Document(Base):
     file_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="pending")
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
-    vector_ids: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
-    metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    vector_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    document_metadata: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -128,13 +127,19 @@ class APIKey(Base):
 
 
 # Database engine and session setup
-engine = create_async_engine(
-    settings.database_url,
-    pool_size=settings.database_pool_size,
-    max_overflow=settings.database_max_overflow,
-    echo=settings.database_echo,
-    pool_pre_ping=True,
-)
+_engine_kwargs = {
+    "echo": settings.database_echo,
+}
+
+# Pool options only apply to connection-pool-capable backends (e.g. PostgreSQL)
+if settings.database_url.startswith("postgresql"):
+    _engine_kwargs.update(
+        pool_size=settings.database_pool_size,
+        max_overflow=settings.database_max_overflow,
+        pool_pre_ping=True,
+    )
+
+engine = create_async_engine(settings.database_url, **_engine_kwargs)
 
 async_session_maker = async_sessionmaker(
     engine,

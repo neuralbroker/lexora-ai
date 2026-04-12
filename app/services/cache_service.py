@@ -31,12 +31,18 @@ class CacheService:
     async def connect(self) -> None:
         """Initialize Redis connection."""
         if self.redis is None:
-            self.redis = redis.from_url(
-                settings.redis_url,
-                encoding="utf-8",
-                decode_responses=True,
-            )
-            logger.info("redis_connected")
+            try:
+                self.redis = redis.from_url(
+                    settings.redis_url,
+                    encoding="utf-8",
+                    decode_responses=True,
+                )
+                # Test the connection
+                await self.redis.ping()
+                logger.info("redis_connected")
+            except Exception as e:
+                logger.warning("redis_connection_failed", error=str(e))
+                self.redis = None
 
     async def disconnect(self) -> None:
         """Close Redis connection."""

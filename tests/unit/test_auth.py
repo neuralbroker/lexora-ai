@@ -45,7 +45,7 @@ async def test_login_success(client: AsyncClient, test_user):
         "/api/v1/auth/login",
         data={
             "username": "test@example.com",
-            "password": "testpassword123",
+            "password": "password123",
         },
     )
     

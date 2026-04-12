@@ -1,11 +1,10 @@
 """Chat endpoints with streaming support."""
 
 import json
-from typing import Annotated, List
+from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.deps import DBSession, CurrentUser
@@ -16,8 +15,7 @@ from app.models.user import (
     ConversationResponse,
     MessageResponse,
 )
-from app.schemas.database import Conversation, Message, User
-from app.services.chat_service import get_chat_service
+from app.schemas.database import Conversation, Message
 
 logger = get_logger(__name__)
 
@@ -33,6 +31,8 @@ async def send_message(
     """
     Send a message and get a response (non-streaming).
     """
+    from app.services.chat_service import get_chat_service
+
     chat_service = get_chat_service(db, current_user)
 
     user_message, assistant_message = await chat_service.create_message(
@@ -59,6 +59,8 @@ async def send_message_stream(
     
     Uses Server-Sent Events (SSE) for streaming.
     """
+    from app.services.chat_service import get_chat_service
+
     chat_service = get_chat_service(db, current_user)
 
     async def generate():
@@ -94,12 +96,14 @@ async def send_message_stream(
 
 @router.get("/conversations", response_model=List[ConversationResponse])
 async def list_conversations(
-    skip: int = 0,
-    limit: int = 20,
     db: DBSession,
     current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 20,
 ) -> List[Conversation]:
     """List user's conversations."""
+    from app.services.chat_service import get_chat_service
+
     chat_service = get_chat_service(db, current_user)
     return await chat_service.list_conversations(skip=skip, limit=limit)
 
@@ -132,6 +136,8 @@ async def get_conversation_messages(
     current_user: CurrentUser,
 ) -> List[Message]:
     """Get messages in a conversation."""
+    from app.services.chat_service import get_chat_service
+
     chat_service = get_chat_service(db, current_user)
     conversation = await chat_service.get_conversation(conversation_id)
     
@@ -151,5 +157,7 @@ async def delete_conversation(
     current_user: CurrentUser,
 ) -> None:
     """Delete a conversation."""
+    from app.services.chat_service import get_chat_service
+
     chat_service = get_chat_service(db, current_user)
     await chat_service.delete_conversation(conversation_id)

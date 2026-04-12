@@ -1,16 +1,15 @@
 """Dependency injection for FastAPI."""
 
-from typing import Annotated, Generator, Optional
+from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.core.security import verify_token_type
-from app.models.user import TokenPayload
-from app.schemas.database import get_db
+from app.schemas.database import User, get_db
 
 settings = get_settings()
 
@@ -20,7 +19,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> "User":
+) -> User:
     """
     Get current authenticated user from JWT token.
     
@@ -59,8 +58,8 @@ async def get_current_user(
 
 
 async def get_current_active_user(
-    current_user: Annotated["User", Depends(get_current_user)],
-) -> "User":
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
     """Get current active user."""
     if not current_user.is_active:
         raise HTTPException(
@@ -73,7 +72,7 @@ async def get_current_active_user(
 async def get_optional_current_user(
     token: Annotated[Optional[str], Depends(oauth2_scheme)] = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
-) -> Optional["User"]:
+) -> Optional[User]:
     """Get current user if authenticated, otherwise return None."""
     if token is None:
         return None
@@ -84,7 +83,7 @@ async def get_optional_current_user(
         return None
 
 
-def require_admin(current_user: Annotated["User", Depends(get_current_user)]) -> "User":
+def require_admin(current_user: Annotated[User, Depends(get_current_user)]) -> User:
     """Require admin privileges."""
     if not current_user.is_admin:
         raise HTTPException(
@@ -94,8 +93,6 @@ def require_admin(current_user: Annotated["User", Depends(get_current_user)]) ->
     return current_user
 
 
-# Type alias for dependency injection
-User = dict  # Placeholder for type hint
 DBSession = Annotated[AsyncSession, Depends(get_db)]
-CurrentUser = Annotated[dict, Depends(get_current_user)]
-ActiveUser = Annotated[dict, Depends(get_current_active_user)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
+ActiveUser = Annotated[User, Depends(get_current_active_user)]

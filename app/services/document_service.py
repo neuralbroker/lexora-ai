@@ -13,7 +13,7 @@ from app.core.logging import get_logger
 from app.schemas.database import Document, User
 from app.services.embedding_service import get_embedding_service
 from app.services.vector_service import get_vector_store
-from app.utils.document_parser import DocumentParser, get_file_type, save_uploaded_file
+from app.utils.document_parser import DocumentParser, save_uploaded_file
 from app.utils.text_chunker import TextChunker
 
 settings = get_settings()
@@ -208,7 +208,7 @@ class DocumentService:
 
     def _validate_file(self, filename: str) -> str:
         """Validate file type."""
-        file_type = get_file_type(filename)
+        file_type = DocumentParser.get_file_type(filename)
         
         if not file_type:
             raise ValidationError(

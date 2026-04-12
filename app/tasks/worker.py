@@ -1,7 +1,6 @@
 """Celery worker configuration for async document processing."""
 
 from celery import Celery
-from celery.config import Config
 
 from app.config import get_settings
 

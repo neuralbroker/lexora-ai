@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import List, Optional
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +15,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        enable_decoding=False,
     )
 
     # Application
@@ -75,6 +76,16 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+
+    @field_validator("allowed_extensions", "cors_origins", mode="before")
+    @classmethod
+    def parse_list_settings(cls, value: str | list[str]) -> list[str]:
+        """Allow comma-separated env values for list settings."""
+        if isinstance(value, list):
+            return value
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
 
     @property
     def is_production(self) -> bool:

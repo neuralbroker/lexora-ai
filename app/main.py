@@ -40,13 +40,20 @@ async def lifespan(app: FastAPI):
     logger.info("application_starting", version=settings.app_version)
     
     await init_db()
-    await cache_service.connect()
+    
+    try:
+        await cache_service.connect()
+    except Exception as e:
+        logger.warning("cache_connection_failed_at_startup", error=str(e))
     
     logger.info("application_ready")
     
     yield
     
-    await cache_service.disconnect()
+    try:
+        await cache_service.disconnect()
+    except Exception:
+        pass
     logger.info("application_shutdown")
 
 
@@ -117,11 +124,31 @@ async def health_check():
 @app.get("/ready")
 async def readiness_check():
     """Readiness check endpoint."""
-    return {
-        "status": "ready",
-        "database": "connected",
-        "cache": "connected",
-    }
+    from app.schemas.database import engine
+    from app.services.cache_service import cache_service
+    
+    checks = {"database": "disconnected", "cache": "disconnected"}
+    
+    try:
+        async with engine.connect() as conn:
+            await conn.execute("SELECT 1")
+        checks["database"] = "connected"
+    except Exception:
+        pass
+    
+    try:
+        if cache_service.redis:
+            await cache_service.redis.ping()
+            checks["cache"] = "connected"
+    except Exception:
+        pass
+    
+    all_connected = all(v == "connected" for v in checks.values())
+    
+    return JSONResponse(
+        status_code=200 if all_connected else 503,
+        content={"status": "ready" if all_connected else "not_ready", **checks},
+    )
 
 
 @app.get("/metrics")

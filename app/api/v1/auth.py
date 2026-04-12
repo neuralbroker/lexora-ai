@@ -1,13 +1,10 @@
 """Authentication endpoints."""
 
-from datetime import timedelta
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.core.exceptions import AuthenticationError, ValidationError
 from app.core.logging import get_logger
 from app.core.security import (
@@ -21,7 +18,6 @@ from app.deps import DBSession, CurrentUser
 from app.models.user import Token, UserCreate, UserResponse
 from app.schemas.database import User
 
-settings = get_settings()
 logger = get_logger(__name__)
 
 router = APIRouter()
@@ -65,8 +61,8 @@ async def register(
 
 @router.post("/login", response_model=Token)
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
     db: DBSession,
+    form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> dict:
     """
     Login and get access token.
