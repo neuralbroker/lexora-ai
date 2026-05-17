@@ -19,13 +19,13 @@ logger = get_logger(__name__)
 class VectorStore:
     """
     FAISS-based vector store for document embeddings.
-    
+
     Features:
     - Persistent storage with JSON metadata
     - User-level isolation
     - Efficient similarity search
     - Incremental updates
-    
+
     Design decision: Use FAISS for its speed and recall performance.
     For 10k+ users, consider migrating to Pinecone or Weaviate.
     """
@@ -33,7 +33,7 @@ class VectorStore:
     def __init__(self, user_id: str, dimension: int = 1536):
         """
         Initialize vector store for a user.
-        
+
         Args:
             user_id: User ID for isolation
             dimension: Embedding dimension
@@ -65,7 +65,9 @@ class VectorStore:
                 self.index = faiss.read_index(self.index_path)
                 with open(self.metadata_path, "r") as f:
                     self.metadata = json.load(f)
-                logger.info("index_loaded", user_id=self.user_id, vectors=len(self.metadata))
+                logger.info(
+                    "index_loaded", user_id=self.user_id, vectors=len(self.metadata)
+                )
             except Exception as e:
                 logger.warning(
                     "index_load_failed",
@@ -90,12 +92,12 @@ class VectorStore:
     ) -> list[str]:
         """
         Add vectors to the index.
-        
+
         Args:
             vectors: List of embedding vectors
             documents: List of text chunks
             document_ids: List of source document IDs
-        
+
         Returns:
             List of vector IDs
         """
@@ -103,20 +105,25 @@ class VectorStore:
             return []
 
         vectors_array = np.array(vectors, dtype=np.float32)
-        
+
         if vectors_array.ndim == 1:
             vectors_array = vectors_array.reshape(1, -1)
 
         vector_ids = []
         start_id = len(self.metadata)
 
-        for i, (vector, doc, doc_id) in enumerate(zip(vectors, documents, document_ids)):
+        for i, (vector, doc, doc_id) in enumerate(
+            zip(vectors, documents, document_ids)
+        ):
             vector_ids.append(f"vec_{start_id + i}")
-            self.metadata.append({
-                "id": f"vec_{start_id + i}",
-                "text": doc,
-                "document_id": doc_id,
-            })
+            self.metadata.append(
+                {
+                    "id": f"vec_{start_id + i}",
+                    "text": doc,
+                    "document_id": doc_id,
+                    "embedding": vector,
+                }
+            )
 
         self.index.add(vectors_array)
         self._save()
@@ -138,12 +145,12 @@ class VectorStore:
     ) -> list[dict]:
         """
         Search for similar vectors.
-        
+
         Args:
             query_vector: Query embedding
             k: Number of results to return
             document_ids: Optional filter by document IDs
-        
+
         Returns:
             List of matching documents with scores
         """
@@ -151,7 +158,7 @@ class VectorStore:
             return []
 
         query_array = np.array([query_vector], dtype=np.float32)
-        
+
         if self.index.ntotal < k:
             k = self.index.ntotal
 
@@ -165,7 +172,7 @@ class VectorStore:
                 continue
 
             meta = self.metadata[idx]
-            
+
             if document_ids and meta["document_id"] not in document_ids:
                 continue
 
@@ -173,26 +180,28 @@ class VectorStore:
                 continue
 
             seen.add(meta["id"])
-            results.append({
-                "text": meta["text"],
-                "document_id": meta["document_id"],
-                "vector_id": meta["id"],
-                "score": float(distance),
-            })
+            results.append(
+                {
+                    "text": meta["text"],
+                    "document_id": meta["document_id"],
+                    "vector_id": meta["id"],
+                    "score": float(distance),
+                }
+            )
 
         return results
 
     def delete_vectors(self, document_id: str) -> bool:
         """
         Delete all vectors associated with a document.
-        
+
         Note: FAISS doesn't support direct deletion, so we rebuild.
         For production with frequent deletions, consider using
         a different index type or database.
-        
+
         Args:
             document_id: Document ID to delete
-        
+
         Returns:
             True if successful
         """
@@ -213,9 +222,14 @@ class VectorStore:
             self._save()
             return
 
-        texts = [m["text"] for m in self.metadata]
-        embedding_service = get_embedding_service()
-        vectors = embedding_service.embed_documents(texts)
+        vectors = [m.get("embedding") for m in self.metadata]
+
+        if any(vector is None for vector in vectors):
+            texts = [m["text"] for m in self.metadata]
+            embedding_service = get_embedding_service()
+            vectors = embedding_service.embed_documents(texts)
+            for meta, vector in zip(self.metadata, vectors):
+                meta["embedding"] = vector
 
         self.index = faiss.IndexFlatL2(self.dimension)
         self.index.add(np.array(vectors, dtype=np.float32))
@@ -225,7 +239,7 @@ class VectorStore:
         """Save index and metadata to disk."""
         if self.index is not None:
             faiss.write_index(self.index, self.index_path)
-        
+
         with open(self.metadata_path, "w") as f:
             json.dump(self.metadata, f)
 
@@ -241,7 +255,7 @@ class VectorStore:
 class VectorStoreManager:
     """
     Manager for multiple user vector stores.
-    
+
     Provides caching and lifecycle management.
     """
 
@@ -251,17 +265,17 @@ class VectorStoreManager:
     def get_store(self, user_id: str, dimension: int = 1536) -> VectorStore:
         """
         Get or create vector store for a user.
-        
+
         Args:
             user_id: User ID
             dimension: Embedding dimension
-        
+
         Returns:
             VectorStore instance
         """
         if user_id not in self._stores:
             self._stores[user_id] = VectorStore(user_id, dimension)
-        
+
         return self._stores[user_id]
 
     def delete_store(self, user_id: str) -> bool:

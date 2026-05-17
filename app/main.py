@@ -2,12 +2,13 @@
 
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
+from sqlalchemy import text
 from starlette.responses import Response
 
 from app.api.v1.router import api_router
@@ -38,18 +39,18 @@ REQUEST_DURATION = Histogram(
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     logger.info("application_starting", version=settings.app_version)
-    
+
     await init_db()
-    
+
     try:
         await cache_service.connect()
     except Exception as e:
         logger.warning("cache_connection_failed_at_startup", error=str(e))
-    
+
     logger.info("application_ready")
-    
+
     yield
-    
+
     try:
         await cache_service.disconnect()
     except Exception:
@@ -92,22 +93,22 @@ async def lexora_exception_handler(request: Request, exc: LexoraException):
 async def prometheus_middleware(request: Request, call_next):
     """Middleware for Prometheus metrics."""
     start_time = time.time()
-    
+
     response = await call_next(request)
-    
+
     duration = time.time() - start_time
-    
+
     REQUEST_COUNT.labels(
         method=request.method,
         endpoint=request.url.path,
         status=response.status_code,
     ).inc()
-    
+
     REQUEST_DURATION.labels(
         method=request.method,
         endpoint=request.url.path,
     ).observe(duration)
-    
+
     return response
 
 
@@ -117,7 +118,7 @@ async def health_check():
     return {
         "status": "healthy",
         "version": settings.app_version,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -126,25 +127,25 @@ async def readiness_check():
     """Readiness check endpoint."""
     from app.schemas.database import engine
     from app.services.cache_service import cache_service
-    
+
     checks = {"database": "disconnected", "cache": "disconnected"}
-    
+
     try:
         async with engine.connect() as conn:
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         checks["database"] = "connected"
     except Exception:
         pass
-    
+
     try:
         if cache_service.redis:
             await cache_service.redis.ping()
             checks["cache"] = "connected"
     except Exception:
         pass
-    
+
     all_connected = all(v == "connected" for v in checks.values())
-    
+
     return JSONResponse(
         status_code=200 if all_connected else 503,
         content={"status": "ready" if all_connected else "not_ready", **checks},
@@ -175,7 +176,7 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "app.main:app",
         host=settings.host,

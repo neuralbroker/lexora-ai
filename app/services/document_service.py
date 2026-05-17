@@ -23,14 +23,14 @@ logger = get_logger(__name__)
 class DocumentService:
     """
     Service for handling document operations.
-    
+
     Features:
     - File upload and storage
     - Text extraction
     - Chunking
     - Embedding generation
     - Vector storage
-    
+
     Design decision: This is the main orchestrator for the
     ingestion pipeline. For production, move heavy processing
     to Celery workers.
@@ -45,7 +45,7 @@ class DocumentService:
     ):
         """
         Initialize document service.
-        
+
         Args:
             db: Database session
             user: Current user
@@ -67,11 +67,11 @@ class DocumentService:
     ) -> Document:
         """
         Upload and process a document.
-        
+
         Args:
             file_content: File content as bytes
             filename: Original filename
-        
+
         Returns:
             Created document record
         """
@@ -93,12 +93,56 @@ class DocumentService:
             file_path=file_path,
             file_type=file_type,
             file_size=file_size,
-            status="processing",
+            status="pending",
         )
 
         self.db.add(document)
         await self.db.commit()
         await self.db.refresh(document)
+
+        if settings.document_processing_mode == "background":
+            await self.enqueue_processing(document)
+        else:
+            await self.process_document(document)
+
+        await self.db.refresh(document)
+
+        return document
+
+    async def enqueue_processing(self, document: Document) -> None:
+        """Enqueue document processing in Celery."""
+        document.status = "queued"
+        await self.db.commit()
+
+        try:
+            from app.tasks.celery_app import celery_app
+
+            celery_app.send_task(
+                "app.tasks.worker.process_document_task",
+                args=[document.id, self.user.id],
+            )
+            logger.info(
+                "document_processing_queued",
+                user_id=self.user.id,
+                document_id=document.id,
+            )
+        except Exception as e:
+            document.status = "failed"
+            document.error_message = f"Failed to enqueue processing task: {e}"
+            await self.db.commit()
+            logger.error(
+                "document_processing_enqueue_failed",
+                user_id=self.user.id,
+                document_id=document.id,
+                error=str(e),
+            )
+            raise
+
+    async def process_document(self, document: Document) -> None:
+        """Process a document and persist completion or failure status."""
+        document.status = "processing"
+        document.error_message = None
+        await self.db.commit()
 
         try:
             await self._process_document(document)
@@ -120,9 +164,6 @@ class DocumentService:
             )
 
         await self.db.commit()
-        await self.db.refresh(document)
-
-        return document
 
     async def _process_document(self, document: Document) -> None:
         """Process document: extract text, chunk, embed, store."""
@@ -139,7 +180,7 @@ class DocumentService:
         vectors = self.embedding_service.embed_documents(chunks)
 
         vector_store = get_vector_store(self.user.id)
-        
+
         vector_ids = vector_store.add_vectors(
             vectors=vectors,
             documents=chunks,
@@ -209,7 +250,7 @@ class DocumentService:
     def _validate_file(self, filename: str) -> str:
         """Validate file type."""
         file_type = DocumentParser.get_file_type(filename)
-        
+
         if not file_type:
             raise ValidationError(
                 f"Unsupported file type. Allowed: {', '.join(settings.allowed_extensions)}"

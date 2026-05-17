@@ -7,8 +7,8 @@ from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -18,12 +18,12 @@ os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only-32characters"
 os.environ["OPENAI_API_KEY"] = "sk-test-key"
 os.environ["ENVIRONMENT"] = "testing"
 
+from app.config import get_settings
+from app.core.security import get_password_hash
 from app.main import app
 from app.schemas.database import Base, User, get_db
-from app.core.security import get_password_hash
-from app.config import Settings
 
-Settings.cache_clear()
+get_settings.cache_clear()
 
 test_engine = create_async_engine(
     "sqlite+aiosqlite:///:memory:",
@@ -78,6 +78,7 @@ async def test_user(db_session: AsyncSession) -> User:
 @pytest_asyncio.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create test client with database override."""
+
     async def override_get_db():
         yield db_session
 
@@ -94,10 +95,11 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 async def auth_token(test_user: User) -> str:
     """Create access token for test user."""
     from app.core.security import create_access_token
+
     return create_access_token(test_user.id)
 
 
 @pytest_asyncio.fixture
-async def auth_headers(auth_token: str) -> dict:
+async def auth_headers(auth_token: str) -> dict[str, str]:
     """Get authorization headers."""
     return {"Authorization": f"Bearer {auth_token}"}

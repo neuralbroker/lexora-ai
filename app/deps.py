@@ -22,7 +22,7 @@ async def get_current_user(
 ) -> User:
     """
     Get current authenticated user from JWT token.
-    
+
     This dependency validates the access token and retrieves
     the user from the database.
     """
@@ -30,6 +30,17 @@ async def get_current_user(
     from sqlalchemy import select
 
     payload = verify_token_type(token, "access")
+    token_id = payload.get("jti")
+    if token_id:
+        from app.services.cache_service import get_cache_service
+
+        cache_service = await get_cache_service()
+        if await cache_service.exists(f"token_blacklist:{token_id}"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     user_id: str = payload.get("sub")
     if user_id is None:
         raise HTTPException(

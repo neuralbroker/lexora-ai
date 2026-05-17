@@ -2,10 +2,8 @@
 
 from typing import AsyncGenerator, Optional
 
-from langchain_openai import ChatOpenAI
-from langchain.chains import ConversationalRetrievalChain
-from langchain.prompts import PromptTemplate
 from langchain.schema import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
 
 from app.config import get_settings
 from app.core.logging import get_logger
@@ -17,13 +15,13 @@ logger = get_logger(__name__)
 class LLMService:
     """
     Service for generating responses using LLMs.
-    
+
     Features:
     - OpenAI GPT integration
     - Streaming responses
     - Configurable parameters
     - Error handling
-    
+
     Design decision: Use LangChain for abstraction.
     For production, add:
     - Fallback models
@@ -39,7 +37,7 @@ class LLMService:
     ):
         """
         Initialize LLM service.
-        
+
         Args:
             model_name: Override default model
             temperature: Override default temperature
@@ -68,17 +66,17 @@ class LLMService:
     ) -> str:
         """
         Generate response for a query with context.
-        
+
         Args:
             query: User question
             context: Retrieved context from documents
             chat_history: Previous conversation history
-        
+
         Returns:
             Generated response
         """
         prompt = self._build_prompt(query, context, chat_history)
-        
+
         logger.info("llm_generation_started", query=query[:100])
 
         messages = [
@@ -93,9 +91,9 @@ class LLMService:
         ]
 
         response = self.llm.invoke(messages)
-        
+
         logger.info("llm_generation_completed", query=query[:100])
-        
+
         return response.content
 
     async def generate_stream(
@@ -106,17 +104,17 @@ class LLMService:
     ) -> AsyncGenerator[str, None]:
         """
         Generate streaming response for a query.
-        
+
         Args:
             query: User question
             context: Retrieved context from documents
             chat_history: Previous conversation history
-        
+
         Yields:
             Response chunks
         """
         prompt = self._build_prompt(query, context, chat_history)
-        
+
         logger.info("llm_stream_started", query=query[:100])
 
         messages = [
@@ -155,9 +153,9 @@ class LLMService:
 
 Current question: {query}
 
-Please provide a helpful answer based on the context above. 
+Please provide a helpful answer based on the context above.
 If the context doesn't contain relevant information, say so."""
-        
+
         return prompt
 
 

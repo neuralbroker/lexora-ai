@@ -1,6 +1,5 @@
 """Document parsing utilities for extracting text from various file formats."""
 
-import io
 import os
 from typing import Optional
 from pathlib import Path
@@ -17,13 +16,13 @@ logger = get_logger(__name__)
 class DocumentParser:
     """
     Document parser for extracting text from various file formats.
-    
+
     Supports:
     - PDF files (.pdf)
     - Plain text (.txt)
     - Markdown (.md)
     - Word documents (.docx)
-    
+
     Design decision: Each parser is isolated to handle failures gracefully
     without affecting other formats.
     """
@@ -39,14 +38,14 @@ class DocumentParser:
     def parse(cls, file_path: str, file_type: str) -> str:
         """
         Parse a document and extract text.
-        
+
         Args:
             file_path: Path to the file
             file_type: Type of the file (pdf, txt, md, docx)
-        
+
         Returns:
             Extracted text content
-        
+
         Raises:
             ValueError: If file type is not supported
         """
@@ -72,10 +71,10 @@ class DocumentParser:
     def _parse_pdf(file_path: str) -> str:
         """
         Parse PDF file and extract text.
-        
+
         Args:
             file_path: Path to PDF file
-        
+
         Returns:
             Extracted text
         """
@@ -84,13 +83,13 @@ class DocumentParser:
             with open(file_path, "rb") as f:
                 reader = PdfReader(f)
                 num_pages = len(reader.pages)
-                
+
                 for page_num in range(num_pages):
                     page = reader.pages[page_num]
                     text = page.extract_text()
                     if text:
                         text_parts.append(text)
-            
+
             return "\n\n".join(text_parts)
         except Exception as e:
             logger.error("pdf_parse_error", file_path=file_path, error=str(e))
@@ -100,10 +99,10 @@ class DocumentParser:
     def _parse_text(file_path: str) -> str:
         """
         Parse plain text or markdown file.
-        
+
         Args:
             file_path: Path to text file
-        
+
         Returns:
             File content
         """
@@ -121,10 +120,10 @@ class DocumentParser:
     def _parse_docx(file_path: str) -> str:
         """
         Parse Word document.
-        
+
         Args:
             file_path: Path to DOCX file
-        
+
         Returns:
             Extracted text
         """
@@ -140,15 +139,20 @@ class DocumentParser:
     def get_file_type(cls, filename: str) -> Optional[str]:
         """
         Determine file type from filename.
-        
+
         Args:
             filename: Name of the file
-        
+
         Returns:
             File type or None if unsupported
         """
         ext = Path(filename).suffix.lower().lstrip(".")
         return cls.SUPPORTED_FORMATS.get(ext)
+
+
+def get_file_type(filename: str) -> Optional[str]:
+    """Determine the supported document type for a filename."""
+    return DocumentParser.get_file_type(filename)
 
 
 async def save_uploaded_file(
@@ -158,27 +162,27 @@ async def save_uploaded_file(
 ) -> str:
     """
     Save uploaded file to disk.
-    
+
     Args:
         content: File content as bytes
         filename: Original filename
         upload_dir: Directory to save files
-    
+
     Returns:
         Path to saved file
     """
     os.makedirs(upload_dir, exist_ok=True)
-    
+
     from datetime import datetime
     import uuid
-    
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_id = str(uuid.uuid4())[:8]
     safe_filename = f"{timestamp}_{unique_id}_{filename}"
-    
+
     file_path = os.path.join(upload_dir, safe_filename)
-    
+
     async with aiofiles.open(file_path, "wb") as f:
         await f.write(content)
-    
+
     return file_path

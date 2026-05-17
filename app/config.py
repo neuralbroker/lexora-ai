@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     max_file_size: int = 52428800  # 50MB
     allowed_extensions: List[str] = ["pdf", "txt", "md", "docx"]
+    document_processing_mode: str = "inline"  # inline or background
 
     # Vector Storage
     faiss_index_path: str = "./data/faiss"
@@ -86,6 +87,17 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @field_validator("document_processing_mode")
+    @classmethod
+    def validate_document_processing_mode(cls, value: str) -> str:
+        """Validate document processing mode."""
+        normalized = value.lower().strip()
+        if normalized not in {"inline", "background"}:
+            raise ValueError(
+                "document_processing_mode must be 'inline' or 'background'"
+            )
+        return normalized
 
     @property
     def is_production(self) -> bool:

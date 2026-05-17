@@ -1,7 +1,8 @@
 """Security utilities for authentication and authorization."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
+from uuid import uuid4
 
 from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -36,23 +37,23 @@ def create_access_token(
 ) -> str:
     """
     Create a JWT access token.
-    
+
     Args:
         subject: Token subject (typically user ID)
         expires_delta: Optional expiration time delta
         additional_claims: Additional claims to include in token
-    
+
     Returns:
         Encoded JWT token string
     """
     if expires_delta is None:
         expires_delta = timedelta(minutes=settings.access_token_expire_minutes)
 
-    to_encode = {"sub": str(subject), "type": "access"}
+    to_encode = {"sub": str(subject), "type": "access", "jti": str(uuid4())}
     if additional_claims:
         to_encode.update(additional_claims)
 
-    expire = datetime.utcnow() + expires_delta
+    expire = datetime.now(UTC) + expires_delta
     to_encode.update({"exp": expire})
 
     encoded_jwt = jwt.encode(
@@ -65,8 +66,13 @@ def create_access_token(
 
 def create_refresh_token(subject: str | Any) -> str:
     """Create a JWT refresh token."""
-    expire = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
-    to_encode = {"sub": str(subject), "type": "refresh", "exp": expire}
+    expire = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
+    to_encode = {
+        "sub": str(subject),
+        "type": "refresh",
+        "jti": str(uuid4()),
+        "exp": expire,
+    }
 
     encoded_jwt = jwt.encode(
         to_encode,
@@ -79,13 +85,13 @@ def create_refresh_token(subject: str | Any) -> str:
 def decode_token(token: str) -> dict[str, Any]:
     """
     Decode and verify a JWT token.
-    
+
     Args:
         token: JWT token string
-    
+
     Returns:
         Decoded token payload
-    
+
     Raises:
         HTTPException: If token is invalid or expired
     """
@@ -104,17 +110,32 @@ def decode_token(token: str) -> dict[str, Any]:
         ) from e
 
 
+def get_token_ttl_seconds(payload: dict[str, Any]) -> int:
+    """Return remaining token lifetime in whole seconds for blacklist TTLs."""
+    exp = payload.get("exp")
+    if exp is None:
+        return 0
+
+    try:
+        expires_at = datetime.fromtimestamp(int(exp), tz=UTC)
+    except (TypeError, ValueError, OSError):
+        return 0
+
+    remaining = expires_at - datetime.now(UTC)
+    return max(int(remaining.total_seconds()), 0)
+
+
 def verify_token_type(token: str, expected_type: str) -> dict[str, Any]:
     """
     Verify token type and return payload.
-    
+
     Args:
         token: JWT token string
         expected_type: Expected token type (access or refresh)
-    
+
     Returns:
         Decoded token payload
-    
+
     Raises:
         HTTPException: If token type doesn't match
     """

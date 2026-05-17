@@ -1,6 +1,6 @@
 """Retrieval service for finding relevant documents."""
 
-from typing import Optional
+from typing import Any
 
 from app.config import get_settings
 from app.core.logging import get_logger
@@ -14,13 +14,13 @@ logger = get_logger(__name__)
 class RetrievalService:
     """
     Service for retrieving relevant documents using similarity search.
-    
+
     Features:
     - Semantic search using embeddings
     - Configurable result count
     - Document filtering
     - Source tracking
-    
+
     Design decision: Simple retrieval-first approach.
     For production, consider adding:
     - Re-ranking (e.g., Cohere reranker)
@@ -36,7 +36,7 @@ class RetrievalService:
     ):
         """
         Initialize retrieval service.
-        
+
         Args:
             user_id: User ID for vector store access
             embedding_service: Optional embedding service
@@ -50,16 +50,16 @@ class RetrievalService:
         self,
         query: str,
         k: int = 4,
-        document_ids: Optional[list[str]] = None,
-    ) -> list[dict]:
+        document_ids: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Retrieve relevant documents for a query.
-        
+
         Args:
             query: User query string
             k: Number of results to return
             document_ids: Optional filter by document IDs
-        
+
         Returns:
             List of relevant document chunks with metadata
         """
@@ -83,14 +83,16 @@ class RetrievalService:
 
         return filtered_results
 
-    def _filter_and_rank(self, results: list[dict], k: int) -> list[dict]:
+    def _filter_and_rank(
+        self, results: list[dict[str, Any]], k: int
+    ) -> list[dict[str, Any]]:
         """
         Filter and rank retrieval results.
-        
+
         Args:
             results: Raw search results
             k: Number of results to return
-        
+
         Returns:
             Filtered and ranked results
         """
@@ -104,24 +106,30 @@ class RetrievalService:
                 unique_by_doc[doc_id] = result
 
         filtered = list(unique_by_doc.values())
-        
+
         filtered.sort(key=lambda x: x["score"])
-        
+
         return filtered[:k]
 
-    def get_context(self, query: str, k: int = 4) -> tuple[str, list[dict]]:
+    def get_context(
+        self,
+        query: str,
+        k: int = 4,
+        document_ids: list[str] | None = None,
+    ) -> tuple[str, list[dict[str, Any]]]:
         """
         Get context string and source metadata for LLM.
-        
+
         Args:
             query: User query
             k: Number of documents to retrieve
-        
+            document_ids: Optional document ID allow-list
+
         Returns:
             Tuple of (context_string, sources_list)
         """
-        results = self.retrieve(query, k=k)
-        
+        results = self.retrieve(query, k=k, document_ids=document_ids)
+
         if not results:
             return "", []
 
@@ -129,19 +137,19 @@ class RetrievalService:
         sources = []
 
         for i, result in enumerate(results):
-            context_parts.append(
-                f"[Document {i + 1}]\n{result['text'][:1000]}"
-            )
-            
+            context_parts.append(f"[Document {i + 1}]\n{result['text'][:1000]}")
+
             if result["document_id"] not in [s.get("document_id") for s in sources]:
-                sources.append({
-                    "document_id": result["document_id"],
-                    "text": result["text"][:200],
-                    "score": result["score"],
-                })
+                sources.append(
+                    {
+                        "document_id": result["document_id"],
+                        "text": result["text"][:200],
+                        "score": result["score"],
+                    }
+                )
 
         context = "\n\n".join(context_parts)
-        
+
         return context, sources
 
 

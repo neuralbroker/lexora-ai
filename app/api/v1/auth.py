@@ -11,10 +11,11 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     get_password_hash,
+    get_token_ttl_seconds,
     verify_password,
     verify_token_type,
 )
-from app.deps import DBSession, CurrentUser
+from app.deps import DBSession, CurrentUser, oauth2_scheme
 from app.models.user import Token, UserCreate, UserResponse
 from app.schemas.database import User
 
@@ -23,18 +24,20 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 async def register(
     user_data: UserCreate,
     db: DBSession,
 ) -> User:
     """
     Register a new user.
-    
+
     Args:
         user_data: User registration data
         db: Database session
-    
+
     Returns:
         Created user
     """
@@ -66,11 +69,11 @@ async def login(
 ) -> dict:
     """
     Login and get access token.
-    
+
     Args:
         form_data: OAuth2 form with username (email) and password
         db: Database session
-    
+
     Returns:
         Access and refresh tokens
     """
@@ -102,15 +105,24 @@ async def refresh_token(
 ) -> dict:
     """
     Refresh access token.
-    
+
     Args:
         refresh_token: Refresh token
         db: Database session
-    
+
     Returns:
         New access and refresh tokens
     """
     payload = verify_token_type(refresh_token, "refresh")
+    token_id = payload.get("jti")
+    cache_service = None
+    if token_id:
+        from app.services.cache_service import get_cache_service
+
+        cache_service = await get_cache_service()
+        if await cache_service.exists(f"token_blacklist:{token_id}"):
+            raise AuthenticationError("Refresh token has been revoked")
+
     user_id = payload.get("sub")
 
     result = await db.execute(select(User).where(User.id == user_id))
@@ -122,6 +134,13 @@ async def refresh_token(
     access_token = create_access_token(user.id)
     new_refresh_token = create_refresh_token(user.id)
 
+    if token_id and cache_service is not None:
+        ttl = get_token_ttl_seconds(payload)
+        if ttl > 0:
+            await cache_service.set(
+                f"token_blacklist:{token_id}", {"revoked": True}, expire=ttl
+            )
+
     return {
         "access_token": access_token,
         "refresh_token": new_refresh_token,
@@ -132,12 +151,23 @@ async def refresh_token(
 @router.post("/logout")
 async def logout(
     current_user: CurrentUser,
+    token: str = Depends(oauth2_scheme),
 ) -> dict:
-    """
-    Logout (invalidate tokens on client side).
-    
-    Note: For production, implement token blacklist in Redis.
-    """
+    """Logout and revoke the current access token until it naturally expires."""
+    payload = verify_token_type(token, "access")
+    token_id = payload.get("jti")
+    ttl = get_token_ttl_seconds(payload)
+
+    if token_id and ttl > 0:
+        from app.services.cache_service import get_cache_service
+
+        cache_service = await get_cache_service()
+        await cache_service.set(
+            f"token_blacklist:{token_id}",
+            {"revoked": True, "user_id": current_user.id},
+            expire=ttl,
+        )
+
     logger.info("user_logged_out", user_id=current_user.id)
     return {"message": "Successfully logged out"}
 
