@@ -11,8 +11,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
-COPY alembic/ ./alembic/
-COPY alembic.ini .
+# NOTE: alembic/ intentionally not copied — the directory does not exist yet.
+# Runtime uses Base.metadata.create_all; add alembic/ + alembic.ini back when migrations are initialized.
 COPY .env.example .env
 
 RUN mkdir -p /app/data/faiss /app/uploads

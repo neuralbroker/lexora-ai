@@ -1,6 +1,24 @@
 # Lexora AI
 
-Lexora AI is a FastAPI-based document question-answering platform. Users upload PDF, TXT, Markdown, or DOCX files, Lexora extracts and chunks their text, stores embeddings in a per-user FAISS index, and answers natural-language questions using retrieval-augmented generation (RAG) with source attribution.
+**Asynchronous document processing and retrieval backend built with FastAPI, PostgreSQL, Redis and Celery.**
+
+```text
+Client
+  ↓
+FastAPI (/api/v1: auth, documents, chat) — JWT (jti) + Redis revocation
+  ↓
+PostgreSQL (async SQLAlchemy: users, documents, conversations, messages, api_keys)
+  ↓
+Redis (retrieval cache 1h, token blacklist) ──→ Celery workers (inline or background document processing)
+  ↓
+Document processing (validate → extract → chunk → embed → per-user FAISS)
+  ↓
+Retrieval (embed query → FAISS top-k → filter/rank → context) → LLM (chat / SSE stream)
+  ↓
+Prometheus /metrics + structlog JSON logs + /health + /ready (DB SELECT 1 + Redis ping)
+```
+
+Document Q&A with source attribution is the demo workload on top of this backend; the hiring signal is the API, data, queue, cache, auth, and observability engineering below.
 
 ## What the project does
 
@@ -56,8 +74,8 @@ lexoraai/
 │   ├── config.py            Environment-driven settings
 │   ├── deps.py              FastAPI dependencies
 │   └── main.py              Application factory and global routes
-├── alembic/                 Database migration assets
-├── docker/                  Dockerfile, Compose stack, and Nginx config
+├── alembic/                 Database migration assets (PLANNED — directory not present; `init_db` uses `create_all`; see Known limitations)
+├── docker/                  Dockerfile, Compose stack (see Known limitations for `nginx.conf`/Celery-target notes)
 ├── scripts/                 Operational helper scripts
 ├── tests/                   Unit and integration tests
 ├── requirements.txt         Runtime dependencies
@@ -275,6 +293,13 @@ venv/Scripts/python.exe scripts/capture_readme_screenshot.py
 - Document processing defaults to `inline` for safer local development. Set `DOCUMENT_PROCESSING_MODE=background` in production when the Celery worker is running.
 - Test coverage is improved for chat-history behavior, but document ingestion, retrieval, vector storage, cache, and full chat orchestration should still receive more unit/integration tests.
 - `SECRET_KEY` defaults are development-only and must be overridden in production.
+- Rate limiting is configured (`rate_limit_per_minute`) but not enforced — there is no rate-limit middleware yet. Do not expose publicly without adding it.
+- No request IDs / correlation IDs, no idempotency keys, no LLM/embedding timeouts-retries (`tenacity` is a dependency but unused), Sentry DSN is configured but never initialized.
+- `alembic` is a dependency but the `alembic/` directory is missing, so `alembic upgrade head` (referenced in `DEPLOYMENT.md`) cannot run; runtime uses `Base.metadata.create_all`.
+- `docker/docker-compose.yml` references `docker/nginx.conf` (+ `ssl`) and Celery target `app.tasks.worker`, but `nginx.conf` is absent and the app object lives in `app.tasks.celery_app` — fix both before `compose up --build` of the full stack.
+- `APIKey` table + schemas exist but there are no API-key endpoints yet.
+- `.gitignore` ignores `*.json` broadly, which would also ignore FAISS `metadata.json` — narrow it before persisting indexes in-repo.
+- No CI yet — see `.github/workflows/ci.yml` (added): lint + unit tests + Docker build check. Integration tests (`tests/integration/` is empty) still to be written.
 
 ## Security considerations
 

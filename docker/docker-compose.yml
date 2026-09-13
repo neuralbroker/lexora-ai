@@ -58,7 +58,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     container_name: lexora-celery
-    command: celery -A app.tasks.worker worker --loglevel=info
+    command: celery -A app.tasks.celery_app worker --loglevel=info
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/lexora
       - REDIS_URL=redis://redis:6379/0
