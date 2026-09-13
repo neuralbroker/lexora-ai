@@ -15,7 +15,7 @@ async def test_register_success(client: AsyncClient):
             "full_name": "New User",
         },
     )
-    
+
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == "newuser@example.com"
@@ -34,7 +34,7 @@ async def test_register_duplicate_email(client: AsyncClient, test_user):
             "password": "password123",
         },
     )
-    
+
     assert response.status_code == 422
 
 
@@ -48,7 +48,7 @@ async def test_login_success(client: AsyncClient, test_user):
             "password": "password123",
         },
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
@@ -66,7 +66,7 @@ async def test_login_invalid_password(client: AsyncClient, test_user):
             "password": "wrongpassword",
         },
     )
-    
+
     assert response.status_code == 401
 
 
@@ -80,7 +80,7 @@ async def test_login_invalid_email(client: AsyncClient):
             "password": "password123",
         },
     )
-    
+
     assert response.status_code == 401
 
 
@@ -91,7 +91,7 @@ async def test_get_current_user(client: AsyncClient, auth_headers):
         "/api/v1/auth/me",
         headers=auth_headers,
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == "test@example.com"
@@ -101,5 +101,5 @@ async def test_get_current_user(client: AsyncClient, auth_headers):
 async def test_get_current_user_unauthorized(client: AsyncClient):
     """Test getting user info without authentication."""
     response = await client.get("/api/v1/auth/me")
-    
+
     assert response.status_code == 401

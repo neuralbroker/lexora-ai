@@ -210,7 +210,8 @@ class ChatService:
         cache_service = await get_cache_service()
 
         doc_filter = "_".join(sorted(document_ids)) if document_ids else "all"
-        cache_key = f"retrieval:{self.user.id}:{hashlib.sha256(query.encode()).hexdigest()[:16]}:{doc_filter}"
+        query_hash = hashlib.sha256(query.encode()).hexdigest()[:16]
+        cache_key = f"retrieval:{self.user.id}:{query_hash}:{doc_filter}"
         cached = await cache_service.get(cache_key)
 
         if cached:

@@ -21,7 +21,7 @@ jobs:
       - name: isort --check
         run: isort --check-only app tests
       - name: flake8
-        run: flake8 app tests --max-line-length=100
+        run: flake8 app tests --max-line-length=100 --extend-ignore=E203,E402,W503
 
   unit-tests:
     runs-on: ubuntu-latest

@@ -1,14 +1,6 @@
 """Unit tests for core exceptions."""
 
-import pytest
-from app.core.exceptions import (
-    LexoraException,
-    AuthenticationError,
-    AuthorizationError,
-    NotFoundError,
-    ValidationError,
-    DocumentProcessingError,
-)
+from app.core.exceptions import AuthenticationError, LexoraException, NotFoundError, ValidationError
 
 
 class TestLexoraException:
@@ -24,9 +16,7 @@ class TestLexoraException:
     def test_exception_with_details(self):
         """Test exception with details."""
         exc = LexoraException(
-            "Test error",
-            status_code=400,
-            details={"field": "email", "reason": "invalid"}
+            "Test error", status_code=400, details={"field": "email", "reason": "invalid"}
         )
         assert exc.details["field"] == "email"
 

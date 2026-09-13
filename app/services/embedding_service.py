@@ -1,10 +1,9 @@
 """Embedding service for generating text embeddings."""
 
-import os
 from typing import Optional
 
-from langchain_openai import OpenAIEmbeddings
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
 from app.config import get_settings
 
@@ -14,12 +13,12 @@ settings = get_settings()
 class EmbeddingService:
     """
     Service for generating text embeddings.
-    
+
     Supports multiple embedding models:
     - OpenAI text-embedding-3-small (default)
     - OpenAI text-embedding-ada-002
     - HuggingFace sentence-transformers
-    
+
     Design decision: Use OpenAI by default for quality,
     with HuggingFace as self-hosted alternative.
     """
@@ -27,7 +26,7 @@ class EmbeddingService:
     def __init__(self, model_name: Optional[str] = None):
         """
         Initialize embedding service.
-        
+
         Args:
             model_name: Override default embedding model
         """
@@ -54,10 +53,10 @@ class EmbeddingService:
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """
         Generate embeddings for multiple documents.
-        
+
         Args:
             texts: List of text strings
-        
+
         Returns:
             List of embedding vectors
         """
@@ -66,10 +65,10 @@ class EmbeddingService:
     def embed_query(self, text: str) -> list[float]:
         """
         Generate embedding for a query.
-        
+
         Args:
             text: Query string
-        
+
         Returns:
             Embedding vector
         """
@@ -78,7 +77,7 @@ class EmbeddingService:
     async def embed_documents_async(self, texts: list[str]) -> list[list[float]]:
         """
         Async wrapper for document embedding.
-        
+
         Note: OpenAI SDK handles async internally using httpx.
         """
         return await self.embeddings.aembed_documents(texts)
@@ -86,7 +85,7 @@ class EmbeddingService:
     async def embed_query_async(self, text: str) -> list[float]:
         """
         Async wrapper for query embedding.
-        
+
         Note: OpenAI SDK handles async internally using httpx.
         """
         return await self.embeddings.aembed_query(text)

@@ -7,7 +7,7 @@ from fastapi import APIRouter, File, UploadFile, status
 from app.config import get_settings
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
-from app.deps import DBSession, CurrentUser
+from app.deps import CurrentUser, DBSession
 from app.models.user import DocumentResponse, DocumentStatus, DocumentUploadResponse
 from app.schemas.database import Document
 
@@ -29,22 +29,22 @@ async def upload_document(
 ) -> Document:
     """
     Upload and process a document.
-    
+
     Supports PDF, TXT, MD, and DOCX files.
     Processing is done asynchronously.
     """
     from app.services.document_service import get_document_service
 
     content = await file.read()
-    
+
     if not content:
         raise ValidationError("Empty file. Please upload a valid document.")
-    
+
     if len(content) > settings.max_file_size:
         raise ValidationError(
             f"File too large. Maximum size: {settings.max_file_size / 1024 / 1024}MB"
         )
-    
+
     doc_service = get_document_service(db, current_user)
     document = await doc_service.upload_document(content, file.filename)
 

@@ -94,9 +94,7 @@ class Settings(BaseSettings):
         """Validate document processing mode."""
         normalized = value.lower().strip()
         if normalized not in {"inline", "background"}:
-            raise ValueError(
-                "document_processing_mode must be 'inline' or 'background'"
-            )
+            raise ValueError("document_processing_mode must be 'inline' or 'background'")
         return normalized
 
     @property

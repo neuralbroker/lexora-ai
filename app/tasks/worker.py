@@ -13,16 +13,15 @@ def process_document_task(self, document_id: str, user_id: str):
         user_id: ID of the user who owns the document
     """
     import asyncio
+
     from sqlalchemy import select
-    from app.schemas.database import async_session_maker, Document
+
+    from app.schemas.database import Document, User, async_session_maker
     from app.services.document_service import get_document_service
-    from app.schemas.database import User
 
     async def _process():
         async with async_session_maker() as db:
-            result = await db.execute(
-                select(Document).where(Document.id == document_id)
-            )
+            result = await db.execute(select(Document).where(Document.id == document_id))
             document = result.scalar_one_or_none()
 
             if not document:

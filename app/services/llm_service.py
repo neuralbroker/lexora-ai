@@ -141,9 +141,7 @@ class LLMService:
         """Build prompt with context and history."""
         history_text = ""
         if chat_history:
-            history_text = "\n".join(
-                f"Human: {q}\nAssistant: {a}" for q, a in chat_history[-5:]
-            )
+            history_text = "\n".join(f"Human: {q}\nAssistant: {a}" for q, a in chat_history[-5:])
 
         prompt = f"""Context from documents:
 {context}

@@ -65,9 +65,7 @@ class VectorStore:
                 self.index = faiss.read_index(self.index_path)
                 with open(self.metadata_path, "r") as f:
                     self.metadata = json.load(f)
-                logger.info(
-                    "index_loaded", user_id=self.user_id, vectors=len(self.metadata)
-                )
+                logger.info("index_loaded", user_id=self.user_id, vectors=len(self.metadata))
             except Exception as e:
                 logger.warning(
                     "index_load_failed",
@@ -112,9 +110,7 @@ class VectorStore:
         vector_ids = []
         start_id = len(self.metadata)
 
-        for i, (vector, doc, doc_id) in enumerate(
-            zip(vectors, documents, document_ids)
-        ):
+        for i, (vector, doc, doc_id) in enumerate(zip(vectors, documents, document_ids)):
             vector_ids.append(f"vec_{start_id + i}")
             self.metadata.append(
                 {

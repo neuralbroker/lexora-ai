@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from app.core.logging import get_logger
-from app.deps import DBSession, CurrentUser
+from app.deps import CurrentUser, DBSession
 from app.models.user import (
     ChatRequest,
     ChatResponse,
@@ -56,7 +56,7 @@ async def send_message_stream(
 ) -> StreamingResponse:
     """
     Send a message and get a streaming response.
-    
+
     Uses Server-Sent Events (SSE) for streaming.
     """
     from app.services.chat_service import get_chat_service
@@ -65,19 +65,21 @@ async def send_message_stream(
 
     async def generate():
         conversation_id = None
-        
+
         async for user_msg, chunk in chat_service.create_message_stream(
             content=request.message,
             conversation_id=request.conversation_id,
             document_ids=request.document_ids,
         ):
             conversation_id = user_msg.conversation_id
-            
-            data = json.dumps({
-                "type": "chunk",
-                "content": chunk,
-                "conversation_id": conversation_id,
-            })
+
+            data = json.dumps(
+                {
+                    "type": "chunk",
+                    "content": chunk,
+                    "conversation_id": conversation_id,
+                }
+            )
             yield f"data: {data}\n\n"
 
         data = json.dumps({"type": "done", "conversation_id": conversation_id})
@@ -116,7 +118,7 @@ async def create_conversation(
 ) -> Conversation:
     """Create a new conversation."""
     from uuid import uuid4
-    
+
     conversation = Conversation(
         id=str(uuid4()),
         user_id=current_user.id,
@@ -125,7 +127,7 @@ async def create_conversation(
     db.add(conversation)
     await db.commit()
     await db.refresh(conversation)
-    
+
     return conversation
 
 
@@ -139,9 +141,10 @@ async def get_conversation_messages(
     from app.services.chat_service import get_chat_service
 
     chat_service = get_chat_service(db, current_user)
-    conversation = await chat_service.get_conversation(conversation_id)
-    
+    await chat_service.get_conversation(conversation_id)
+
     from sqlalchemy import select
+
     result = await db.execute(
         select(Message)
         .where(Message.conversation_id == conversation_id)

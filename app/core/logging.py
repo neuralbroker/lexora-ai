@@ -46,11 +46,11 @@ def configure_logging() -> None:
 def get_logger(name: str | None = None, **initial_context: Any) -> structlog.BoundLogger:
     """
     Get a configured logger instance.
-    
+
     Args:
         name: Logger name (typically __name__)
         **initial_context: Initial context to add to all log entries
-    
+
     Returns:
         Configured structlog logger
     """

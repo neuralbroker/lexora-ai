@@ -15,13 +15,13 @@ logger = get_logger(__name__)
 class CacheService:
     """
     Redis-based caching service.
-    
+
     Features:
     - Async operations
     - JSON serialization
     - TTL support
     - Connection pooling
-    
+
     Design decision: Use Redis for caching queries and responses.
     """
 
@@ -54,10 +54,10 @@ class CacheService:
     async def get(self, key: str) -> Optional[dict]:
         """
         Get value from cache.
-        
+
         Args:
             key: Cache key
-        
+
         Returns:
             Cached value or None
         """
@@ -81,12 +81,12 @@ class CacheService:
     ) -> bool:
         """
         Set value in cache.
-        
+
         Args:
             key: Cache key
             value: Value to cache
             expire: TTL in seconds
-        
+
         Returns:
             True if successful
         """
@@ -107,10 +107,10 @@ class CacheService:
     async def delete(self, key: str) -> bool:
         """
         Delete value from cache.
-        
+
         Args:
             key: Cache key
-        
+
         Returns:
             True if successful
         """
@@ -166,7 +166,7 @@ class CacheService:
             keys = []
             async for key in self.redis.scan_iter(match=pattern):
                 keys.append(key)
-            
+
             if keys:
                 return await self.redis.delete(*keys)
             return 0

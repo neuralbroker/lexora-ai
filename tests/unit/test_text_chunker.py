@@ -1,7 +1,6 @@
 """Unit tests for text chunker."""
 
-import pytest
-from app.utils.text_chunker import TextChunker, SemanticChunker
+from app.utils.text_chunker import SemanticChunker, TextChunker
 
 
 class TestTextChunker:
@@ -33,7 +32,7 @@ class TestTextChunker:
         chunker = TextChunker(chunk_size=10)
         text = "Hello world test"
         result = chunker.chunk_text(text)
-        
+
         for chunk in result:
             words = chunk.split()
             for word in words:
@@ -44,7 +43,7 @@ class TestTextChunker:
         chunker = TextChunker(chunk_size=100)
         text = "First paragraph.\n\nSecond paragraph.\n\nThird paragraph."
         result = chunker.chunk_by_paragraphs(text)
-        
+
         assert len(result) > 0
         for chunk in result:
             assert len(chunk) <= 100
@@ -56,9 +55,11 @@ class TestSemanticChunker:
     def test_semantic_chunking(self):
         """Test semantic chunking maintains sentence boundaries."""
         chunker = SemanticChunker(chunk_size=100, min_sentences=2)
-        text = "This is the first sentence. This is the second sentence. This is the third sentence."
+        text = (
+            "This is the first sentence. This is the second sentence. This is the third sentence."
+        )
         result = chunker.chunk_text(text)
-        
+
         assert len(result) > 0
 
     def test_semantic_chunking_complete_thoughts(self):
@@ -66,7 +67,7 @@ class TestSemanticChunker:
         chunker = SemanticChunker(chunk_size=50, min_sentences=1)
         text = "Hello world. How are you?"
         result = chunker.chunk_text(text)
-        
+
         for chunk in result:
             if len(chunk) > 10:
                 assert chunk.endswith((".", "!", "?"))

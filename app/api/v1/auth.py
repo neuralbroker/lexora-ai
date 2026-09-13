@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AuthenticationError, ValidationError
 from app.core.logging import get_logger
@@ -15,7 +14,7 @@ from app.core.security import (
     verify_password,
     verify_token_type,
 )
-from app.deps import DBSession, CurrentUser, oauth2_scheme
+from app.deps import CurrentUser, DBSession, oauth2_scheme
 from app.models.user import Token, UserCreate, UserResponse
 from app.schemas.database import User
 
@@ -24,9 +23,7 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-@router.post(
-    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: UserCreate,
     db: DBSession,
@@ -137,9 +134,7 @@ async def refresh_token(
     if token_id and cache_service is not None:
         ttl = get_token_ttl_seconds(payload)
         if ttl > 0:
-            await cache_service.set(
-                f"token_blacklist:{token_id}", {"revoked": True}, expire=ttl
-            )
+            await cache_service.set(f"token_blacklist:{token_id}", {"revoked": True}, expire=ttl)
 
     return {
         "access_token": access_token,

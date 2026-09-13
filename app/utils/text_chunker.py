@@ -7,12 +7,12 @@ from typing import Optional
 class TextChunker:
     """
     Text chunker for splitting documents into smaller pieces.
-    
+
     Supports multiple strategies:
     - Fixed size with overlap
     - Semantic chunking (by paragraphs)
     - Recursive splitting
-    
+
     Design decision: We use a hybrid approach combining paragraph
     detection with size limits to maintain semantic coherence.
     """
@@ -25,7 +25,7 @@ class TextChunker:
     ):
         """
         Initialize the text chunker.
-        
+
         Args:
             chunk_size: Maximum size of each chunk in characters
             chunk_overlap: Overlap between chunks in characters
@@ -48,10 +48,10 @@ class TextChunker:
     def chunk_text(self, text: str) -> list[str]:
         """
         Split text into chunks using recursive approach.
-        
+
         Args:
             text: Input text to chunk
-        
+
         Returns:
             List of text chunks
         """
@@ -97,7 +97,7 @@ class TextChunker:
                     else:
                         if current_chunk:
                             chunks.append(current_chunk)
-                        
+
                         if len(part) > self.chunk_size:
                             self._split_text(part, chunks)
                             current_chunk = ""
@@ -112,10 +112,10 @@ class TextChunker:
     def chunk_by_paragraphs(self, text: str) -> list[str]:
         """
         Split text by paragraphs with size limits.
-        
+
         Args:
             text: Input text
-        
+
         Returns:
             List of paragraph-based chunks
         """
@@ -136,7 +136,7 @@ class TextChunker:
             else:
                 if current_chunk:
                     chunks.append(current_chunk.strip())
-                
+
                 if len(para) > self.chunk_size:
                     chunks.extend(self.chunk_text(para))
                     current_chunk = ""
@@ -152,7 +152,7 @@ class TextChunker:
 class SemanticChunker(TextChunker):
     """
     Semantic chunker that tries to maintain semantic coherence.
-    
+
     Uses sentence detection and context preservation.
     """
 
@@ -186,11 +186,9 @@ class SemanticChunker(TextChunker):
             current_chunk.append(sentence)
 
             chunk_text = " ".join(current_chunk)
-            if len(chunk_text) >= self.chunk_size or self._is_complete_thought(
-                current_chunk
-            ):
+            if len(chunk_text) >= self.chunk_size or self._is_complete_thought(current_chunk):
                 chunks.append(chunk_text)
-                
+
                 overlap_text = " ".join(current_chunk[-2:])
                 if len(overlap_text) <= self.chunk_overlap:
                     current_chunk = current_chunk[-2:]

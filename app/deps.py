@@ -4,7 +4,6 @@ from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -26,8 +25,9 @@ async def get_current_user(
     This dependency validates the access token and retrieves
     the user from the database.
     """
-    from app.schemas.database import User
     from sqlalchemy import select
+
+    from app.schemas.database import User
 
     payload = verify_token_type(token, "access")
     token_id = payload.get("jti")

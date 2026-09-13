@@ -1,8 +1,9 @@
 """Unit tests for document parser utility."""
 
-import pytest
 import os
 import tempfile
+
+import pytest
 
 from app.utils.document_parser import DocumentParser, get_file_type
 

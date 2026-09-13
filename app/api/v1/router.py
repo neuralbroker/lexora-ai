@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, documents, chat
+from app.api.v1 import auth, chat, documents
 
 api_router = APIRouter()
 

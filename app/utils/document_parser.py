@@ -1,12 +1,12 @@
 """Document parsing utilities for extracting text from various file formats."""
 
 import os
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 import aiofiles
-from pypdf import PdfReader
 from docx import Document as DocxDocument
+from pypdf import PdfReader
 
 from app.core.logging import get_logger
 
@@ -173,8 +173,8 @@ async def save_uploaded_file(
     """
     os.makedirs(upload_dir, exist_ok=True)
 
-    from datetime import datetime
     import uuid
+    from datetime import datetime
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_id = str(uuid.uuid4())[:8]

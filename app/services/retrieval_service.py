@@ -83,9 +83,7 @@ class RetrievalService:
 
         return filtered_results
 
-    def _filter_and_rank(
-        self, results: list[dict[str, Any]], k: int
-    ) -> list[dict[str, Any]]:
+    def _filter_and_rank(self, results: list[dict[str, Any]], k: int) -> list[dict[str, Any]]:
         """
         Filter and rank retrieval results.
 
