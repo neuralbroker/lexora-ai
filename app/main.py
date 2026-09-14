@@ -1,6 +1,7 @@
 """Main FastAPI application."""
 
 import time
+import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
@@ -15,6 +16,7 @@ from app.api.v1.router import api_router
 from app.config import get_settings
 from app.core.exceptions import LexoraException
 from app.core.logging import configure_logging, get_logger
+from app.core.rate_limit import rate_limit_middleware
 from app.schemas.database import init_db
 from app.services.cache_service import cache_service
 
@@ -91,10 +93,13 @@ async def lexora_exception_handler(request: Request, exc: LexoraException):
 
 @app.middleware("http")
 async def prometheus_middleware(request: Request, call_next):
-    """Middleware for Prometheus metrics."""
+    """Middleware for Prometheus metrics + request IDs + rate limits."""
     start_time = time.time()
 
-    response = await call_next(request)
+    request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
+
+    # Rate limits apply to API routes only; health/ready/metrics stay open.
+    response = await rate_limit_middleware(request, call_next, settings.rate_limit_per_minute)
 
     duration = time.time() - start_time
 
@@ -109,6 +114,7 @@ async def prometheus_middleware(request: Request, call_next):
         endpoint=request.url.path,
     ).observe(duration)
 
+    response.headers["X-Request-ID"] = request_id
     return response
 
 

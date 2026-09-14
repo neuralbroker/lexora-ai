@@ -61,18 +61,20 @@ uvicorn app.main:app --reload  # docs: /docs, health: /health
 ## Testing
 
 ```bash
-python -m pytest        # 31 unit tests, ~46% coverage, SQLite overrides, no real OpenAI calls
+python -m pytest        # 35 unit tests, ~49% coverage, SQLite overrides, no real OpenAI calls
 python -m pytest tests/unit -q
+python scripts/eval_retrieval.py --top-k 3   # deterministic chunking recall probe (3/3)
 ```
 
 ## Performance
 
-No published latency/throughput benchmarks. Only measured: `31 passed`, `46%` coverage. See `docs/performance.md` for what to measure next.
+No latency/throughput benchmarks yet (needs PG + Redis + OpenAI key; see `docs/performance.md`).
+Measured: `35 passed`, `49%` coverage, retrieval recall probe `3/3` at top-3.
 
 ## Limitations
 
-No Alembic dir (uses `create_all`); `nginx.conf`/SSL missing; Celery target fixed to `app.tasks.celery_app`; rate limiting configured but not enforced; no request IDs/idempotency; LLM retries and Sentry not wired; APIKey table without routes. See `docs/` + README history.
+No Alembic dir (uses `create_all`); `nginx.conf`/SSL missing; Celery target fixed to `app.tasks.celery_app`; rate limiting is single-replica in-memory (Redis sliding-window is the next step); no idempotency on uploads/chat; streaming LLM calls not retried (non-streaming `generate` retries 3×); Sentry not wired (SDK removed); APIKey table without routes. See `docs/` + README history.
 
 ## Future Improvements
 
-Alembic from day one; enforce rate limits + request IDs; replace Celery with `BackgroundTasks` or justify queue; replace FAISS with pgvector; drop LangChain wrappers for direct OpenAI calls; remove unused deps (`sentry-sdk`, `tenacity`, `pymupdf`, `alembic` until real); add integration tests.
+Alembic from day one; Redis-backed rate limits; replace Celery with `BackgroundTasks` or justify queue; replace FAISS with pgvector; drop LangChain wrappers for direct OpenAI calls; idempotency keys on ingest; integration + load tests; embedding-recall + faithfulness evals beyond the keyword probe.

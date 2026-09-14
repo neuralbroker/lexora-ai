@@ -4,6 +4,7 @@ from typing import AsyncGenerator, Optional
 
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.config import get_settings
 from app.core.logging import get_logger
@@ -58,6 +59,12 @@ class LLMService:
             streaming=True,
         )
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(Exception),
+        reraise=True,
+    )
     def generate(
         self,
         query: str,
@@ -65,15 +72,11 @@ class LLMService:
         chat_history: Optional[list[tuple[str, str]]] = None,
     ) -> str:
         """
-        Generate response for a query with context.
+        Generate response for a query with context (3 attempts, exp backoff).
 
-        Args:
-            query: User question
-            context: Retrieved context from documents
-            chat_history: Previous conversation history
-
-        Returns:
-            Generated response
+        Retries transient provider failures (429/5xx/timeouts). Streaming
+        (generate_stream) is NOT retried — a partial stream can't be resumed
+        transparently; callers re-issue the request instead.
         """
         prompt = self._build_prompt(query, context, chat_history)
 

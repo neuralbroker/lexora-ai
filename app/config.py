@@ -70,9 +70,11 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     log_format: str = "json"
+    # Reserved for future Sentry wiring (SDK not installed; see requirements.txt).
     sentry_dsn: Optional[str] = None
 
-    # Rate Limiting
+    # Rate Limiting (enforced by app/core/rate_limit.py on /api/v1; single-replica
+    # in-memory buckets unless Redis is used — see that module).
     rate_limit_per_minute: int = 60
 
     # CORS

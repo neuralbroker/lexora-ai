@@ -9,8 +9,9 @@ python-multipart==0.0.6
 ## Database
 sqlalchemy==2.0.25
 asyncpg==0.29.0
-alembic==1.13.1
 psycopg2-binary==2.9.9
+# NOTE: alembic removed (2026-09-14) — schema uses create_all; re-add with
+# migrations/ when the first ALTER lands. See docs/database.md.
 
 ## Authentication
 python-jose[cryptography]==3.3.0
@@ -28,8 +29,9 @@ tiktoken==0.7.0
 huggingface-hub==0.23.0
 
 ## Document Processing
+# pypdf is the PDF reader (app/utils/document_parser.py). pymupdf was removed
+# (2026-09-14) — never imported anywhere.
 pypdf==3.17.4
-pymupdf==1.23.8
 python-docx==1.1.0
 
 ## Caching & Async
@@ -39,12 +41,14 @@ httpx==0.26.0
 
 ## Logging & Monitoring
 structlog==24.1.0
-sentry-sdk[fastapi]==1.40.0
+# NOTE: sentry-sdk removed (2026-09-14) — never wired (no init call anywhere).
+# Re-add with SENTRY_DSN + init in lifespan when ready to use it.
 prometheus-client==0.19.0
 
 ## Utilities
 python-dotenv==1.0.0
 pydantic==2.5.3
 pydantic-settings==2.1.0
+# tenacity backs LLM retries (app/services/llm_service.py).
 tenacity==8.2.3
 aiofiles==23.2.1
